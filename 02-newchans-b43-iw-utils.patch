@@ -1,0 +1,71 @@
+diff --git a/package/iw/patches/newchans-b43-iw.patch b/package/iw/patches/newchans-b43-iw.patch
+new file mode 100644
+index 0000000000..1de2ea7964
+--- /dev/null
++++ b/package/iw/patches/newchans-b43-iw.patch
+@@ -0,0 +1,39 @@
++--- a/util.c
+++++ b/util.c
++@@ -266,16 +266,20 @@ const char *command_name(enum nl80211_co
++ 
++ int ieee80211_channel_to_frequency(int chan, enum nl80211_band band)
++ {
++ 	/* see 802.11 17.3.8.3.2 and Annex J
++ 	 * there are overlapping channel numbers in 5GHz and 2GHz bands */
++-	if (chan <= 0)
+++	if (chan < 0)
++ 		return 0; /* not supported */
++ 	switch (band) {
++ 	case NL80211_BAND_2GHZ:
++ 		if (chan == 14)
++ 			return 2484;
+++		else if (chan == 15)
+++			return 2494;
+++		else if (chan == 16)
+++			return 2402;
++ 		else if (chan < 14)
++ 			return 2407 + chan * 5;
++ 		break;
++ 	case NL80211_BAND_5GHZ:
++ 		if (chan >= 182 && chan <= 196)
++@@ -296,10 +300,14 @@ int ieee80211_channel_to_frequency(int c
++ int ieee80211_frequency_to_channel(int freq)
++ {
++ 	/* see 802.11-2007 17.3.8.3.2 and Annex J */
++ 	if (freq == 2484)
++ 		return 14;
+++	else if (freq == 2494)
+++		return 15;
+++	else if (freq == 2402)
+++		return 16;
++ 	else if (freq < 2484)
++ 		return (freq - 2407) / 5;
++ 	else if (freq >= 4910 && freq <= 4980)
++ 		return (freq - 4000) / 5;
++ 	else if (freq <= 45000) /* DMG band lower limit */
+diff --git a/package/iwinfo/src/iwinfo_nl80211.c b/package/iwinfo/src/iwinfo_nl80211.c
+index 544e701b9e..06119810a3 100644
+--- a/package/iwinfo/src/iwinfo_nl80211.c
++++ b/package/iwinfo/src/iwinfo_nl80211.c
+@@ -346,6 +346,10 @@ static int nl80211_freq2channel(int freq)
+ {
+ 	if (freq == 2484)
+ 		return 14;
++	else if (freq == 2494)
++		return 15;
++	else if (freq == 2402)
++		return 16;
+ 	else if (freq < 2484)
+ 		return (freq - 2407) / 5;
+ 	else if (freq >= 4910 && freq <= 4980)
+@@ -360,6 +364,10 @@ static int nl80211_channel2freq(int channel, const char *band)
+ 	{
+ 		if (channel == 14)
+ 			return 2484;
++		else if (channel == 15)
++			return 2494;
++		else if (channel == 16)
++			return 2402;
+ 		else if (channel < 14)
+ 			return (channel * 5) + 2407;
+ 	}

@@ -1,0 +1,13 @@
+diff --git a/modules/admin-mini/luasrc/model/cbi/mini/wifi.lua b/modules/admin-mini/luasrc/model/cbi/mini/wifi.lua
+index a18c072..981c054 100644
+--- a/feeds/luci/modules/admin-mini/luasrc/model/cbi/mini/wifi.lua
++++ b/feeds/luci/modules/admin-mini/luasrc/model/cbi/mini/wifi.lua
+@@ -180,7 +180,7 @@ end
+ 
+ 
+ ch = s:option(Value, "channel", translate("Channel"))
+-for i=1, 14 do
++for i=1, 16 do
+ 	ch:value(i, i .. " (2.4 GHz)")
+ end
+ 

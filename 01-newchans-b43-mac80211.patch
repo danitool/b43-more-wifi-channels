@@ -1,0 +1,147 @@
+diff --git a/package/mac80211/files/lib/wifi/mac80211.sh b/package/mac80211/files/lib/wifi/mac80211.sh
+index 1994ca38d4..ccefe3a08c 100644
+--- a/package/mac80211/files/lib/wifi/mac80211.sh
++++ b/package/mac80211/files/lib/wifi/mac80211.sh
+@@ -638,8 +638,7 @@ config wifi-device  radio$devidx
+ 	option hwmode	11${mode_11n}${mode_band}
+ $dev_id
+ $ht_capab
+-	# REMOVE THIS LINE TO ENABLE WIFI:
+-	option disabled 1
++	option txpower 16
+ 
+ config wifi-iface
+ 	option device   radio$devidx
+diff --git a/package/mac80211/files/regdb.txt b/package/mac80211/files/regdb.txt
+index fcab208d18..d404de851d 100644
+--- a/package/mac80211/files/regdb.txt
++++ b/package/mac80211/files/regdb.txt
+@@ -1,17 +1,13 @@
+ # This is the world regulatory domain
+ country 00:
+-	(2402 - 2472 @ 40), (20)
+-	# Channel 12 - 13.
+-	(2457 - 2482 @ 40), (20), NO-IR
+-	# Channel 14. Only JP enables this and for 802.11b only
+-	(2474 - 2494 @ 20), (20), NO-IR
+-	# Channel 36 - 48
+-	(5170 - 5250 @ 80), (20), NO-IR
+-	# NB: 5260 MHz - 5700 MHz requies DFS
+-	# Channel 149 - 165
+-	(5735 - 5835 @ 80), (20), NO-IR
+-	# IEEE 802.11ad (60GHz), channels 1..3
+-	(57240 - 63720 @ 2160), (0)
++	(2302 - 2594 @ 40), (22)
++	(4910 - 4990 @ 80), (30)
++	(5030 - 5090 @ 40), (30)
++	(5150 - 5350 @ 160), (30)
++	(5470 - 5730 @ 160), (30)
++	(5725 - 5875 @ 80), (30)
++	(17100 - 17300 @ 160), (30)
++	(57000 - 66000 @ 2160), (30)
+ 
+ 
+ country AD:
+@@ -275,12 +271,15 @@ country EG: DFS-ETSI
+ 	(5250 - 5330 @ 80), (20), DFS
+ 
+ country ES: DFS-ETSI
+-	(2400 - 2483.5 @ 40), (100 mW)
+-	(5150 - 5250 @ 80), (100 mW), NO-OUTDOOR
+-	(5250 - 5350 @ 80), (100 mW), NO-OUTDOOR
+-	(5470 - 5725 @ 80), (500 mW), DFS
+-	# 60 gHz band channels 1-4, ref: Etsi En 302 567
+-	(57240 - 65880 @ 2160), (40), NO-OUTDOOR
++	(2302 - 2494 @ 40), (22)
++	(4910 - 4990 @ 80), (30)
++	(5030 - 5090 @ 40), (30)
++	(5150 - 5350 @ 160), (30)
++	(5470 - 5730 @ 160), (30)
++	(5725 - 5875 @ 80), (30)
++	(17100 - 17300 @ 160), (30)
++	(57000 - 66000 @ 2160), (40)
++
+ 
+ country FI: DFS-ETSI
+ 	(2402 - 2482 @ 40), (20)
+diff --git a/package/mac80211/patches/newchans-b43-mac80211.patch b/package/mac80211/patches/newchans-b43-mac80211.patch
+new file mode 100644
+index 0000000000..1077d5bda2
+--- /dev/null
++++ b/package/mac80211/patches/newchans-b43-mac80211.patch
+@@ -0,0 +1,75 @@
++--- a/net/wireless/util.c
+++++ b/net/wireless/util.c
++@@ -72,10 +72,14 @@ int ieee80211_channel_to_frequency(int c
++ 		return 0; /* not supported */
++ 	switch (band) {
++ 	case IEEE80211_BAND_2GHZ:
++ 		if (chan == 14)
++ 			return 2484;
+++		else if (chan == 15)
+++			return 2494;
+++		else if (chan == 16)
+++			return 2402;
++ 		else if (chan < 14)
++ 			return 2407 + chan * 5;
++ 		break;
++ 	case IEEE80211_BAND_5GHZ:
++ 		if (chan >= 182 && chan <= 196)
++@@ -97,10 +101,14 @@ EXPORT_SYMBOL(ieee80211_channel_to_frequ
++ int ieee80211_frequency_to_channel(int freq)
++ {
++ 	/* see 802.11 17.3.8.3.2 and Annex J */
++ 	if (freq == 2484)
++ 		return 14;
+++	else if (freq == 2494)
+++		return 15;
+++	else if (freq == 2402)
+++		return 16;
++ 	else if (freq < 2484)
++ 		return (freq - 2407) / 5;
++ 	else if (freq >= 4910 && freq <= 4980)
++ 		return (freq - 4000) / 5;
++ 	else if (freq <= 45000) /* DMG band lower limit */
++--- a/drivers/net/wireless/b43/main.c
+++++ b/drivers/net/wireless/b43/main.c
++@@ -208,10 +208,12 @@ static struct ieee80211_channel b43_2ghz
++ 	CHAN2G(10, 2457, 0),
++ 	CHAN2G(11, 2462, 0),
++ 	CHAN2G(12, 2467, 0),
++ 	CHAN2G(13, 2472, 0),
++ 	CHAN2G(14, 2484, 0),
+++	CHAN2G(15, 2494, 0),
+++	CHAN2G(16, 2402, 0),
++ };
++ #undef CHAN2G
++ 
++ #define CHAN4G(_channel, _flags) {				\
++ 	.band			= IEEE80211_BAND_5GHZ,		\
++--- a/drivers/net/wireless/b43/phy_g.c
+++++ b/drivers/net/wireless/b43/phy_g.c
++@@ -57,11 +57,11 @@ static const s8 b43_tssi2dbm_g_table[] =
++ 
++ static const u8 b43_radio_channel_codes_bg[] = {
++ 	12, 17, 22, 27,
++ 	32, 37, 42, 47,
++ 	52, 57, 62, 67,
++-	72, 84,
+++	72, 84, 94, 02,
++ };
++ 
++ 
++ static void b43_calc_nrssi_threshold(struct b43_wldev *dev);
++ 
++@@ -70,11 +70,11 @@ static void b43_calc_nrssi_threshold(str
++ 
++ 
++ /* Get the freq, as it has to be written to the device. */
++ static inline u16 channel2freq_bg(u8 channel)
++ {
++-	B43_WARN_ON(!(channel >= 1 && channel <= 14));
+++	B43_WARN_ON(!(channel >= 1 && channel <= 16));
++ 
++ 	return b43_radio_channel_codes_bg[channel - 1];
++ }
++ 
++ static void generate_rfatt_list(struct b43_wldev *dev,
