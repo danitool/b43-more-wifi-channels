@@ -23,3 +23,5 @@ Tested on these old routers:
 
 Communication was succesfully made using two routes flashed with this identical patched firmware. Configured
 as AP-WDS (()) CLIENT-WDS
+
+![](b43-new-chans-luci.png)
